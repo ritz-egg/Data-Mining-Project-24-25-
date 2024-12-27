@@ -1,6 +1,10 @@
 import pandas as pd
+from sklearn.cluster import DBSCAN
+from scipy.stats import zscore
 
 
+
+# MISSING DATA FUNCTION
 def missing_data(df):
     """
     Gives the count and percentage of missing values for each column in a DataFrame
@@ -22,3 +26,113 @@ def missing_data(df):
     # Sort in descending order
     missing_data = missing_data.sort_values(by='Missing Count', ascending=False)
     return missing_data
+
+
+# IQR OUTLIER FUNCTION
+def remove_outliers_iqr(df, columns, threshold=1.5):
+    rows_removed = {}  
+    total_removed=0
+    initial_rows = df.shape[0]
+    for column in columns:
+        Q1 = df[column].quantile(0.25)
+        Q3 = df[column].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - threshold * IQR
+        upper_bound = Q3 + threshold * IQR
+        
+        removed = df[~((df[column] >= lower_bound) & (df[column] <= upper_bound))].shape[0]
+        rows_removed[column] = removed
+        total_removed += removed
+        
+        print(f'Upper Bound for {column}: {upper_bound}')
+        print(f'Lower Bound for {column}: {lower_bound}')
+        print(50*'-')
+
+        
+        df = df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+    print(f'Rows removed for each:{rows_removed}')
+    print(f'Total removed:{total_removed}')
+    print(f'Percentage removed:{round((total_removed/initial_rows)*100,4)}%')
+    return df
+
+
+# PERCENTILE OUTLIER FUNCTION
+def remove_outliers_percentile(df, columns, lower_percentile=0, upper_percentile=95):
+    rows_removed = {}  # Dictionary to store the number of rows removed per column
+    total_removed = 0
+    initial_rows = df.shape[0]
+    
+    for column in columns:
+        lower_bound = df[column].quantile(lower_percentile / 100)
+        upper_bound = df[column].quantile(upper_percentile / 100)
+        
+        removed = df[~((df[column] >= lower_bound) & (df[column] <= upper_bound))].shape[0]
+        rows_removed[column] = removed
+        total_removed += removed
+        
+        print(f'Upper Bound for {column}: {upper_bound}')
+        print(f'Lower Bound for {column}: {lower_bound}')
+        print(50 * '-')
+        
+        df = df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+    
+    print(f'Rows removed for each: {rows_removed}')
+    print(f'Total removed: {total_removed}')
+    print(f'Percentage removed: {round((total_removed / initial_rows) * 100, 4)}%')
+    
+    return df
+
+# DBSCAN OUTLIERS FUNCTION
+def remove_outliers_dbscan(df, columns, eps=0.5, min_samples=5):
+    rows_removed = {}  
+    total_removed = 0
+    initial_rows = df.shape[0]
+
+    for column in columns:
+        column_data = df[[column]]
+        
+        db = DBSCAN(eps=eps, min_samples=min_samples)
+        df['outlier'] = db.fit_predict(column_data)  
+
+        removed = df[df['outlier'] == -1].shape[0]
+        rows_removed[column] = removed
+        total_removed += removed
+
+        print(f"Outliers in {column}: {removed}")
+
+        df_cleaned = df[df['outlier'] != -1].drop(columns='outlier')
+
+    print(f"\nTotal rows removed: {total_removed}")
+    print(f"Percentage of data removed: {round((total_removed / initial_rows) * 100, 4)}%")
+
+    print("\nValue after removing outliers:")
+    for column in columns:
+        print(f"Maximum value in {column}: {df_cleaned[column].max()}")
+        print(f"Minimum value in {column}: {df_cleaned[column].min()}")
+        print(50*'-')
+
+    return df_cleaned
+
+
+# Z-SCORE OUTLIER
+def remove_outliers_zscore(df, column, threshold=3):
+    rows_removed = {}  
+    total_removed = 0
+    initial_rows = df.shape[0]
+
+
+    z_scores = zscore(df[column])
+
+    outliers = np.abs(z_scores) > threshold
+
+    removed = df[outliers].shape[0]
+    rows_removed[column] = removed
+    total_removed += removed
+
+    print(f"Total outliers in column {column}: {removed}")
+
+    df_cleaned = df[~outliers]
+
+    print(f"Percentage of data removed: {round((total_removed / initial_rows) * 100, 4)}%")
+    
+    return df_cleaned
