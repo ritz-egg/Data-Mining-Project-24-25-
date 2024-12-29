@@ -82,6 +82,7 @@ def remove_outliers_percentile(df, columns, lower_percentile=0, upper_percentile
     
     return df
 
+
 # DBSCAN OUTLIERS FUNCTION
 def remove_outliers_dbscan(df, columns, eps=0.5, min_samples=5):
     rows_removed = {}  
