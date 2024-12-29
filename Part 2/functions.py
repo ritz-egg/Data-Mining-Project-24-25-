@@ -1,7 +1,8 @@
 import pandas as pd
 from sklearn.cluster import DBSCAN
 from scipy.stats import zscore
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 # MISSING DATA FUNCTION
@@ -137,3 +138,32 @@ def remove_outliers_zscore(df, column, threshold=3):
     print(f"Percentage of data removed: {round((total_removed / initial_rows) * 100, 4)}%")
     
     return df_cleaned
+
+
+
+# -----------------------------------------------------------------------------------------------
+# Functions for plotting
+
+
+def plot_distribution_and_boxplot(df, columns_with_outliers, w=15,h=12):
+    """
+    Plots the distribution and boxplot for a list of columns with outliers.
+    """
+    plt.figure(figsize=(w, h))
+
+    for i, column in enumerate(columns_with_outliers):
+        # Distribution plot
+        plt.subplot(len(columns_with_outliers), 2, 2 * i + 1)
+        sns.histplot(df[column], kde=True, bins=30, color='blue')
+        plt.title(f'Distribution of {column}')
+        plt.xlabel(column)
+        plt.ylabel('Frequency')
+
+        # Boxplot
+        plt.subplot(len(columns_with_outliers), 2, 2 * i + 2)
+        sns.boxplot(x=df[column], color='orange')
+        plt.title(f'Boxplot of {column}')
+        plt.xlabel(column)
+
+    plt.tight_layout()
+    plt.show()
