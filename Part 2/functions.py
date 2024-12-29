@@ -3,6 +3,10 @@ from sklearn.cluster import DBSCAN
 from scipy.stats import zscore
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
+import math
+import matplotlib.gridspec as gridspec
+
 
 
 # MISSING DATA FUNCTION
@@ -145,11 +149,11 @@ def remove_outliers_zscore(df, column, threshold=3):
 # Functions for plotting
 
 
-def plot_distribution_and_boxplot(df, columns_with_outliers, w=15,h=12):
+def plot_distribution_and_boxplot(df, columns_with_outliers, w=15,h=3):
     """
     Plots the distribution and boxplot for a list of columns with outliers.
     """
-    plt.figure(figsize=(w, h))
+    plt.figure(figsize=(w, h*len(columns_with_outliers)))
 
     for i, column in enumerate(columns_with_outliers):
         # Distribution plot
@@ -167,3 +171,139 @@ def plot_distribution_and_boxplot(df, columns_with_outliers, w=15,h=12):
 
     plt.tight_layout()
     plt.show()
+
+
+
+
+
+def plot_distribution_grid(df, subset_num, cols=2, title="Feature Distributions"):
+    sns.set(style="white")
+    rows = math.ceil(len(subset_num) / cols)
+    fig = plt.figure(figsize=(cols * 9, rows * 5))
+    fig.suptitle(title, fontsize=16, fontweight='bold', y=0.94) 
+    outer = gridspec.GridSpec(rows, cols, wspace=0.3, hspace=0.5)
+
+    for i, feature in enumerate(subset_num):
+        inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+
+        for j in range(2):
+            ax = plt.Subplot(fig, inner[j])
+            if j == 0:
+                img = df.copy()
+                img.dropna(subset=[feature], inplace=True)
+                bin_edges = np.histogram_bin_edges(img[feature], bins='auto')
+                if img[feature].dtype == int:
+                    bin_edges = np.arange(int(bin_edges.min()), int(bin_edges.max()) + 1)
+                sns.histplot(img[feature], bins=bin_edges, kde=False, ax=ax, color="lightblue", edgecolor="gray", alpha=0.7)
+                
+                if img[feature].dtype == int:
+                    ax.axvline(img[feature].mode()[0], color='orange', linestyle='--', label=f"mode: {round(img[feature].mode()[0])}", alpha=0.8)    
+                ax.axvline(img[feature].median(), color='gray', linestyle='--', label=f'median: {round(img[feature].median())}', alpha=0.8)
+                
+                
+                ax.legend()
+                ax.set_xticks([])
+                ax.set_xlabel('')
+                ax.set_title(f'Distribution of {feature}')
+                ax.grid(True, linestyle='-', alpha=0.6, axis='both')
+            else:
+                sns.boxplot(x=img[feature], ax=ax, color="lightblue", width=0.25,
+                            boxprops=dict(alpha=0.5), flierprops=dict(marker='o', alpha=0.35))
+                ax.grid(True, linestyle='-', alpha=0.6)
+            fig.add_subplot(ax)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])  
+    plt.show()
+
+
+
+
+
+
+def compare_figure_outliers(df_original, df, num_feats):
+    sns.set_style('whitegrid')
+    frows = math.ceil(len(num_feats) / 2)
+    fcols = 2
+    
+    fig = plt.figure(figsize=(15, 5 * frows))
+    
+    subfigs = fig.subfigures(frows, fcols, wspace=0.03, hspace=0.03)
+    
+    for sfig, feat in zip(subfigs.flatten(), num_feats):
+        axes = sfig.subplots(2, 1, sharex=True)
+        
+        sns.boxplot(x=df_original[feat], ax=axes[0])
+        axes[0].set_ylabel("Original")
+        axes[0].set_title(feat, fontsize="large")
+        
+        sns.boxplot(x=df[feat], ax=axes[1])
+        axes[1].set_ylabel("Outliers\nRemoved")
+        axes[1].set_xlabel("")
+        
+        sfig.set_facecolor("#F9F9F9")
+        sfig.subplots_adjust(left=0.2, right=0.95, bottom=0.1)
+        
+    plt.show()
+    sns.set()
+
+
+
+def plot_numerical(df, col):
+    sns.set(style="white")
+    fig = plt.figure(figsize=(8, 6), tight_layout=True)
+    gs = GridSpec(2, 1, figure=fig, height_ratios=[2, 1.7], hspace=0.03)
+    
+    col_median = np.median(df[col])
+    
+    ax1 = fig.add_subplot(gs[0, 0])
+    bin_edges = np.histogram_bin_edges(df[col], bins='auto')
+    if df[col].dtype == int:
+        bin_edges = np.arange(int(bin_edges.min()), int(bin_edges.max()) + 1)
+
+    ax1.hist(df[col], bins=bin_edges, alpha=0.9, color="lightblue", edgecolor="gray")
+    
+    if df[col].dtype == int:
+        ax1.axvline(df[col].mode()[0], color='orange', linestyle='--', label=f"mode: {round(df[col].mode()[0])}", alpha=0.8)    
+    ax1.axvline(col_median, color='lightgray', linestyle='--', label=f"median: {round(col_median)}", alpha=0.8)
+    
+    ax1.set_xticks([])
+    ax1.set_ylabel("frequency")
+    ax1.legend()
+    ax1.grid(True, linestyle='-', alpha=0.6)
+    ax2 = fig.add_subplot(gs[1, 0])
+    sns.boxplot(x=df[col], ax=ax2, color="lightblue", width=0.25,
+                boxprops=dict(alpha=0.5), flierprops=dict(marker='o', alpha=0.35))
+    ax2.set_xlabel(col)
+    ax2.set_yticks([]) 
+    ax2.grid(True, linestyle='-', alpha=0.6)
+
+    plt.suptitle(f"'{col}' distribution", fontsize=14, fontweight='bold')
+    plt.show()
+    
+
+
+# Criar para scaling: ALTERAR
+def compare_figure_scaling(df_original, df, num_feats):
+    sns.set_style('whitegrid')
+    frows = math.ceil(len(num_feats) / 2)
+    fcols = 2
+    
+    fig = plt.figure(figsize=(15, 5 * frows))
+    
+    subfigs = fig.subfigures(frows, fcols, wspace=0.03, hspace=0.03)
+    
+    for sfig, feat in zip(subfigs.flatten(), num_feats):
+        axes = sfig.subplots(2, 1, sharex=True)
+        
+        sns.boxplot(x=df_original[feat], ax=axes[0])
+        axes[0].set_ylabel("Original")
+        axes[0].set_title(feat, fontsize="large")
+        
+        sns.boxplot(x=df[feat], ax=axes[1])
+        axes[1].set_ylabel("Outliers\nRemoved")
+        axes[1].set_xlabel("")
+        
+        sfig.set_facecolor("#F9F9F9")
+        sfig.subplots_adjust(left=0.2, right=0.95, bottom=0.1)
+        
+    plt.show()
+    sns.set()
