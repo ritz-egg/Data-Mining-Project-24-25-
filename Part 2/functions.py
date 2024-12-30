@@ -6,6 +6,7 @@ import seaborn as sns
 import numpy as np
 import math
 import matplotlib.gridspec as gridspec
+from matplotlib.gridspec import GridSpec
 
 
 
@@ -307,3 +308,35 @@ def compare_figure_scaling(df_original, df, num_feats):
         
     plt.show()
     sns.set()
+
+
+
+
+def plot_categorical_distributions(df, cat_cols, cols_num=2):
+    if len(cat_cols) == 1:
+        order = df[cat_cols[0]].value_counts().index
+        plt.figure(figsize=(8, 6))
+        sns.countplot(x=cat_cols[0], data=df,order=order)
+        plt.title(f'Distribution of {cat_cols[0]}')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+    else:
+        rows = math.ceil(len(cat_cols) / cols_num)
+
+        fig, axes = plt.subplots(rows, cols_num, figsize=(cols_num * 7, rows *5))
+
+        axes = axes.flatten() if len(cat_cols) > 1 else [axes]
+
+        for ax, feat in zip(axes, cat_cols):
+            order = df[feat].value_counts().index
+            sns.countplot(x=feat, data=df, ax=ax, order=order)
+            ax.set_title(f'Distribution of {feat}')
+            ax.tick_params(axis='x', rotation=45)
+
+        for i in range(len(cat_cols), len(axes)):
+            fig.delaxes(axes[i])
+
+        plt.suptitle("Categorical Variables Distribution", fontsize=16)
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.show()
