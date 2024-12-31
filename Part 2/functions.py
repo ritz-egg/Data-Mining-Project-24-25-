@@ -283,25 +283,59 @@ def plot_numerical(df, col):
 
 
 # Criar para scaling: ALTERAR
-def compare_figure_scaling(df_original, df, num_feats):
+# def compare_figure_scaling(df_original, df_scaled, num_feats):
+#     sns.set_style('whitegrid')
+#     frows = math.ceil(len(num_feats) / 2)
+#     fcols = 2
+    
+#     fig = plt.figure(figsize=(15, 5 * frows))
+    
+#     subfigs = fig.subfigures(frows, fcols, wspace=0.03, hspace=0.03)
+    
+#     for sfig, feat in zip(subfigs.flatten(), num_feats):
+#         axes = sfig.subplots(2, 1, sharex=True)
+        
+#         # Original data boxplot
+#         sns.boxplot(x=df_original[feat], ax=axes[0])
+#         axes[0].set_ylabel("Original")
+#         axes[0].set_title(feat, fontsize="large")
+        
+#         # Scaled data boxplot
+#         sns.boxplot(x=df_scaled[feat], ax=axes[1])
+#         axes[1].set_ylabel("Scaled")
+#         axes[1].set_xlabel("")
+        
+#         sfig.set_facecolor("#F9F9F9")
+#         sfig.subplots_adjust(left=0.2, right=0.95, bottom=0.1)
+        
+#     plt.show()
+#     sns.set()
+
+
+
+def compare_figure_scaling_histograms(df_original, df_scaled, num_feats):
     sns.set_style('whitegrid')
     frows = math.ceil(len(num_feats) / 2)
     fcols = 2
     
+    # Create figure
     fig = plt.figure(figsize=(15, 5 * frows))
     
     subfigs = fig.subfigures(frows, fcols, wspace=0.03, hspace=0.03)
     
+    # Loop through features and plot
     for sfig, feat in zip(subfigs.flatten(), num_feats):
         axes = sfig.subplots(2, 1, sharex=True)
         
-        sns.boxplot(x=df_original[feat], ax=axes[0])
-        axes[0].set_ylabel("Original")
-        axes[0].set_title(feat, fontsize="large")
+        # Plot the histogram for the original data
+        sns.histplot(df_original[feat], bins=15, kde=True, ax=axes[0])
+        axes[0].set_title(f"{feat} - Original", fontsize="large")
+        axes[0].set_ylabel("Frequency")
         
-        sns.boxplot(x=df[feat], ax=axes[1])
-        axes[1].set_ylabel("Outliers\nRemoved")
-        axes[1].set_xlabel("")
+        # Plot the histogram for the scaled data
+        sns.histplot(df_scaled[feat], bins=15, kde=True, ax=axes[1])
+        axes[1].set_title(f"{feat} - Scaled", fontsize="large")
+        axes[1].set_ylabel("Frequency")
         
         sfig.set_facecolor("#F9F9F9")
         sfig.subplots_adjust(left=0.2, right=0.95, bottom=0.1)
