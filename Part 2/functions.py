@@ -8,6 +8,9 @@ import math
 import matplotlib.gridspec as gridspec
 from matplotlib.gridspec import GridSpec
 
+from sklearn.neighbors import NearestNeighbors
+
+
 
 
 # MISSING DATA FUNCTION
@@ -89,57 +92,41 @@ def remove_outliers_percentile(df, columns, lower_percentile=0, upper_percentile
     return df
 
 
-# DBSCAN OUTLIERS FUNCTION
-def remove_outliers_dbscan(df, columns, eps=0.5, min_samples=5):
-    rows_removed = {}  
-    total_removed = 0
-    initial_rows = df.shape[0]
-
-    for column in columns:
-        column_data = df[[column]]
-        
-        db = DBSCAN(eps=eps, min_samples=min_samples)
-        df['outlier'] = db.fit_predict(column_data)  
-
-        removed = df[df['outlier'] == -1].shape[0]
-        rows_removed[column] = removed
-        total_removed += removed
-
-        print(f"Outliers in {column}: {removed}")
-
-        df_cleaned = df[df['outlier'] != -1].drop(columns='outlier')
-
-    print(f"\nTotal rows removed: {total_removed}")
-    print(f"Percentage of data removed: {round((total_removed / initial_rows) * 100, 4)}%")
-
-    print("\nValue after removing outliers:")
-    for column in columns:
-        print(f"Maximum value in {column}: {df_cleaned[column].max()}")
-        print(f"Minimum value in {column}: {df_cleaned[column].min()}")
-        print(50*'-')
-
-    return df_cleaned
-
 
 # Z-SCORE OUTLIER
+import numpy as np
+from scipy.stats import zscore
+
 def remove_outliers_zscore(df, column, threshold=3):
     rows_removed = {}  
     total_removed = 0
     initial_rows = df.shape[0]
 
-
+    # Calculate Z-scores for the column
     z_scores = zscore(df[column])
 
+    # Identify outliers based on the Z-score threshold
     outliers = np.abs(z_scores) > threshold
 
+    # Count the removed outliers
     removed = df[outliers].shape[0]
     rows_removed[column] = removed
     total_removed += removed
 
     print(f"Total outliers in column {column}: {removed}")
 
+    # Clean the dataframe by removing outliers
     df_cleaned = df[~outliers]
 
+    # Calculate upper and lower bounds based on Z-score
+    mean_value = df[column].mean()
+    std_dev = df[column].std()
+
+    lower_bound = mean_value - threshold * std_dev
+    upper_bound = mean_value + threshold * std_dev
+
+    print(f"Lower bound: {lower_bound}")
+    print(f"Upper bound: {upper_bound}")
     print(f"Percentage of data removed: {round((total_removed / initial_rows) * 100, 4)}%")
     
     return df_cleaned
@@ -374,3 +361,67 @@ def plot_categorical_distributions(df, cat_cols, cols_num=2):
         plt.suptitle("Categorical Variables Distribution", fontsize=16)
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.show()
+
+
+
+def iqr_or_percentile(df, columns, iqr_multiplier=3, lower_quantile=0.01, upper_quantile=0.99):
+    cols_remove_right_outliers_perc = []
+    cols_remove_right_outliers_IQR = []
+    cols_remove_left_outliers_IQR = []
+    cols_remove_left_outliers_perc = []
+    
+    for col in columns:
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound_IQR = Q1 - iqr_multiplier * IQR
+        upper_bound_IQR = Q3 + iqr_multiplier * IQR
+        lower_bound_perc = df[col].quantile(lower_quantile)
+        upper_bound_perc = df[col].quantile(upper_quantile)
+        
+        # Identify right outliers using percentiles and IQR
+        if df[col].max() > upper_bound_perc and upper_bound_perc > upper_bound_IQR:
+            cols_remove_right_outliers_perc.append(col)
+        elif df[col].max() > upper_bound_IQR and upper_bound_IQR > upper_bound_perc:
+            cols_remove_right_outliers_IQR.append(col)
+        
+        # Identify left outliers using IQR
+        if df[col].min() < lower_bound_IQR:
+            cols_remove_left_outliers_IQR.append(col)
+        
+        # Identify left outliers using percentiles
+        elif df[col].min() < lower_bound_perc and lower_bound_perc < lower_bound_IQR:
+            cols_remove_left_outliers_perc.append(col)
+    
+    # Print the results for verification
+    print("Columns with right outliers (percentile):", cols_remove_right_outliers_perc)
+    print("Columns with right outliers (IQR):", cols_remove_right_outliers_IQR)
+    print("Columns with left outliers (IQR):", cols_remove_left_outliers_IQR)
+    print("Columns with left outliers (percentile):", cols_remove_left_outliers_perc)
+
+    return (
+        cols_remove_right_outliers_perc,
+        cols_remove_right_outliers_IQR,
+        cols_remove_left_outliers_IQR,
+        cols_remove_left_outliers_perc,
+    )
+
+
+
+
+def k_distance_graph(df, metric_features):
+    min_pts = 2 * len(metric_features)
+    neigh = NearestNeighbors(n_neighbors=min_pts)
+    neigh.fit(df[metric_features])
+
+    distances, _ = neigh.kneighbors(df[metric_features])
+
+    distances = np.sort(distances[:, -1])
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(distances, color='orange', linestyle='-', linewidth=2)
+    plt.title("K-Distance graph to find the right epsilon", fontsize=16, fontweight='bold')
+    plt.xlabel("Sorted data points", fontsize=14)
+    plt.ylabel(f"Distance to {min_pts-1}th nearest neighbor", fontsize=14)
+    plt.tight_layout()  
+    plt.show()
